@@ -1,3 +1,5 @@
+use std::collections::HashMap;
+
 
 #[derive(PartialEq,Eq,Debug,Clone)]
 pub enum Token {
@@ -31,39 +33,41 @@ impl Token {
     }
 }
 
+pub fn create_token_map() -> HashMap<&'static str,Token> {
+    [
+        ("if",Token::If),
+        (" ",Token::Space),
+        ("\n",Token::Endline),
+        ("=",Token::Assign),
+        ("+",Token::Plus),
+        ("-",Token::Minus),
+        ("*",Token::Multiplication),
+        ("/",Token::Division),
+    ] .into_iter()
+    .collect()
+}
+
+pub fn pattern(input: &str,start:impl Fn(char) -> bool,rest:impl Fn(char) -> bool) -> Option<usize> {
+    if start(input.chars().next()?) {
+        return Some(input[1..].find(|c| !rest(c)).unwrap_or(input.len() - 1) + 1);
+    }
+    None
+}
+
+
+#[allow(clippy::manual_map)]
 pub fn tokens(mut input: &str) -> Vec<Token> {
     let mut res = vec![];
+    let token_map = create_token_map();
 
     while !input.is_empty() {
-        let token = if input.starts_with("if") {
-            Some(Token::If)
-        } else if input.starts_with(' ') {
-            Some(Token::Space)
-        } else if input.starts_with('\n') {
-            Some(Token::Endline)
-        } else if input.starts_with('=') {
-            Some(Token::Assign)
-        } else if input.starts_with('+') {
-            Some(Token::Plus)
-        } else if input.starts_with('-') {
-            Some(Token::Minus)
-        } else if input.starts_with('*') {
-            Some(Token::Multiplication)
-        } else if input.starts_with('/') {
-            Some(Token::Division)
-        } else if input
-            .chars()
-            .next()
-            .is_some_and(|c| c.is_ascii_alphabetic())
-        {
-            // Name
-            let index = input.find(|x: char| !x.is_ascii_alphanumeric());
-            let index = index.unwrap_or(input.len());
+        let token = if let Some(token) = token_map.iter()
+            .filter(|&(k,_)| input.starts_with(*k))
+            .map(|(_,v)| v).next() {
+            Some(token.clone())
+        } else if let Some(index) =  pattern(input,|c| c.is_ascii_alphabetic(),|c| c.is_ascii_alphanumeric()) {
             Some(Token::Name(input[..index].into()))
-        } else if input.chars().next().is_some_and(|c| c.is_ascii_digit()) {
-            // Number
-            let index = input.find(|x: char| !x.is_ascii_digit());
-            let index = index.unwrap_or(input.len());
+        } else if let Some(index) =  pattern(input,|c| c.is_ascii_digit(),|c| c.is_ascii_digit()) {
             Some(Token::Number(input[..index].into()))
         } else {
             None
@@ -77,23 +81,6 @@ pub fn tokens(mut input: &str) -> Vec<Token> {
     }
     res
 }
-
-
-pub enum Instruction {
-    Assign {
-        left: Box<str>
-    }
-
-}
-
-pub fn instructions(tokens:&[Token]) {
-    let mut tokens: Vec<Token> = tokens.to_vec();
-    tokens.retain(|t| !matches!(t, Token::Endline | Token::Space));
-
-
-
-}
-
 
 #[cfg(test)]
 mod tests {
